@@ -24,7 +24,7 @@ The workflow detects the project type, then runs every applicable validation:
 
 | Job | Runs when | What it does |
 | --- | --- | --- |
-| `validate` | always | Repository structure check (README, license) + project type detection |
+| `validate` | always | Government check (README, license, structure, secrets) + project type detection |
 | `node` | a Node.js project | delegates to `node.yml` (lint, typecheck, test, build) |
 | `go` | a Go project | delegates to `go.yml` (`go vet`, `go test`, `go build`) |
 | `docker` | a Docker project | delegates to `docker.yml` (build-only, never publishes) |
@@ -52,7 +52,6 @@ Dockerfile         → Docker
 | `node-version` | `22` | Node.js version for the Node validation |
 | `pnpm-version` | `10` | pnpm version for the Node validation |
 | `go-version` | *(empty)* | Go version (empty = read from `go.mod`) |
-| `run-repository-checks` | `true` | Run README / license / secret checks |
 | `readme-required` | `true` | Fail when no README is present |
 | `license-required` | `true` | Fail when no license is present |
 | `secret-scan` | `true` | Scan tracked files for exposed secrets |

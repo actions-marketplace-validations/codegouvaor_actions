@@ -1,7 +1,5 @@
 name: CodeGouvAOR repository check
-description: >-
-  Verify the baseline structure of a CodeGouvAOR repository (README, license,
-  tracked .env files) and optionally scan tracked files for exposed secrets.
+description: Validate CodeGouvAOR repository structure and scan for exposed secrets.
 author: CodeGouvAOR
 
 branding:

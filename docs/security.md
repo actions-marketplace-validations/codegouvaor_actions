@@ -50,7 +50,8 @@ hardening, to a full commit SHA.
 
 ## What the secret scan covers
 
-`government.yml` / `repository-check` scan tracked files for high-confidence
+`government.yml`, the `government-check` action and the `repository-check`
+action scan tracked files for high-confidence
 patterns (AWS access keys, GitHub tokens, private keys, Slack/Stripe/npm tokens,
 Google API keys, …). It is intentionally conservative to keep the
 false-positive rate low enough to fail on. For deeper coverage use a dedicated

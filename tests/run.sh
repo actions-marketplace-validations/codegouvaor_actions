@@ -135,6 +135,60 @@ else
     fail_test "secret scan detects planted credential: secrets-found=$(get_output secrets-found)"
 fi
 
+echo "== government-check.sh =="
+
+gok="$tmpdir/gov-ok"
+mkdir -p "$gok"
+printf '# ok\n' >"$gok/README.md"
+printf 'MIT\n' >"$gok/LICENSE"
+printf 'node_modules/\n' >"$gok/.gitignore"
+run_script "$SCRIPT_DIR/government-check/scripts/government-check.sh" WORKING_DIRECTORY="$gok" SECRET_SCAN=false
+if [ "$(get_output status)" = "pass" ] && [ "$(get_output has-readme)" = "true" ] && [ "$(get_output has-license)" = "true" ]; then
+    pass_test "government-check passes on a well-formed repository"
+else
+    fail_test "government-check passes on a well-formed repository: status=$(get_output status)"
+fi
+
+run_script "$SCRIPT_DIR/government-check/scripts/government-check.sh" \
+    WORKING_DIRECTORY="$REPO_ROOT/tests/fixtures/node-app" \
+    README_REQUIRED=true LICENSE_REQUIRED=true SECRET_SCAN=false || true
+if [ "$(get_output status)" = "fail" ] && [ "$(get_output has-readme)" = "false" ]; then
+    pass_test "government-check fails on missing README/LICENSE"
+else
+    fail_test "government-check fails on missing README/LICENSE: status=$(get_output status)"
+fi
+
+# Secret detection must fail the check.
+run_script "$SCRIPT_DIR/government-check/scripts/government-check.sh" \
+    WORKING_DIRECTORY="$secretdir" README_REQUIRED=false LICENSE_REQUIRED=false || true
+if [ "$(get_output secrets-found)" = "true" ] && [ "$(get_output status)" = "fail" ]; then
+    pass_test "government-check fails when a secret is detected"
+else
+    fail_test "government-check fails when a secret is detected: secrets=$(get_output secrets-found)"
+fi
+
+# Large-file check reports a warning without failing.
+bigdir="$tmpdir/gov-big"
+mkdir -p "$bigdir"
+printf '# ok\n' >"$bigdir/README.md"
+printf 'MIT\n' >"$bigdir/LICENSE"
+head -c 2097152 /dev/zero >"$bigdir/big.bin"
+run_script "$SCRIPT_DIR/government-check/scripts/government-check.sh" \
+    WORKING_DIRECTORY="$bigdir" SECRET_SCAN=false MAX_FILE_SIZE_MB=1
+if [ "$(get_output status)" = "pass" ] && [ "$(get_output warnings)" -ge 1 ]; then
+    pass_test "government-check warns on large tracked files"
+else
+    fail_test "government-check warns on large tracked files: status=$(get_output status) warnings=$(get_output warnings)"
+fi
+
+# Invalid project-type must fail detection.
+run_script "$SCRIPT_DIR/government-check/scripts/detect.sh" WORKING_DIRECTORY="$REPO_ROOT/tests/fixtures/go-app" PROJECT_TYPE=invalid || true
+if [ -z "$(get_output project-type)" ]; then
+    pass_test "detect rejects an invalid project-type"
+else
+    fail_test "detect rejects an invalid project-type"
+fi
+
 echo "== ads-check.sh =="
 
 adsdir="$tmpdir/ads"

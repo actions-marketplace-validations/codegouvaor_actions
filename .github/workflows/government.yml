@@ -24,10 +24,6 @@ on:
         description: Go version for the Go validation (empty = read from go.mod).
         type: string
         default: ""
-      run-repository-checks:
-        description: Run the baseline repository structure checks.
-        type: boolean
-        default: true
       readme-required:
         description: Fail when no README is present.
         type: boolean
@@ -78,23 +74,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Repository structure check
-        id: repo
-        if: ${{ inputs.run-repository-checks }}
-        uses: $/actions/repository-check
-        with:
-          working-directory: ${{ inputs.working-directory }}
-          readme-required: ${{ inputs.readme-required }}
-          license-required: ${{ inputs.license-required }}
-          secret-scan: ${{ inputs.secret-scan }}
-          fail-on-secret: ${{ inputs.fail-on-secret }}
-
-      - name: Project detection
+      - name: CodeGouvAOR government check
         id: detect
         uses: $/actions/government-check
         with:
           working-directory: ${{ inputs.working-directory }}
           project-type: ${{ inputs.project-type }}
+          readme-required: ${{ inputs.readme-required }}
+          license-required: ${{ inputs.license-required }}
+          secret-scan: ${{ inputs.secret-scan }}
+          fail-on-secret: ${{ inputs.fail-on-secret }}
 
   node:
     name: Node.js validation

@@ -2,16 +2,81 @@
 
 The official GitHub Actions for the CodeGouvAOR ecosystem.
 
-`codegouvaor/actions` is a small set of **reusable workflows** and **composite
-actions** that give every repository of the organization a standard, maintained
-CI without re-implementing any logic. It is designed as a **public CI API**:
-simple to consume, documented, versioned and stable.
+`codegouvaor/actions` provides the standard, maintained CI and controls for every
+CodeGouvAOR repository. It is designed as a **public CI API**: simple to consume,
+documented, versioned and stable.
 
 ```yaml
 jobs:
   government:
     uses: codegouvaor/actions/.github/workflows/government.yml@v1
 ```
+
+## Two types of components
+
+This repository ships **two distinct kinds of components**:
+
+```text
+CodeGouvAOR Actions
+├── Reusable Workflows
+└── GitHub Actions (custom actions)
+```
+
+| Kind | Consumed via | Distributed via |
+| --- | --- | --- |
+| **Reusable Workflows** | `codegouvaor/actions/.github/workflows/<name>.yml@v1` | Directly from this repository (not on the Marketplace) |
+| **GitHub Actions** (custom actions) | `codegouvaor/actions/<action>@v1` | The GitHub Marketplace |
+
+- **Reusable workflows** (`government.yml`, `node.yml`, `go.yml`, `docker.yml`)
+  are called at the job level. They are the official CI/CD interface of the
+  ecosystem and are consumed directly from this repository:
+
+  ```yaml
+  jobs:
+    government:
+      uses: codegouvaor/actions/.github/workflows/government.yml@v1
+  ```
+
+- **Custom actions** (`government-check`, `repository-check`, `ads-check`) are
+  called from a `steps:` list. They are standalone reusable components and can be
+  published to the GitHub Marketplace:
+
+  ```yaml
+  steps:
+    - uses: codegouvaor/actions/government-check@v1
+  ```
+
+Both are part of the official CodeGouvAOR support. Reusable workflows are **not**
+Marketplace actions; custom actions are. See
+[actions/government-check/README.md](actions/government-check/README.md) for the
+official `government-check` action.
+
+## Publishing to GitHub Marketplace
+
+The official action published to the Marketplace is **`CodeGouvAOR Government
+Check`**, defined by the [`action.yml`](action.yml) **at the repository root**.
+GitHub only offers an action for Marketplace publication when a repository
+contains a single `action.yml` at its root (sub-folder action metadata files are
+not auto-listed). The root `action.yml` forwards to `actions/government-check`,
+so there is a single source of truth.
+
+A CI job (`marketplace`) runs on every push/PR and **detects** this readiness: it
+confirms the root `action.yml` exists and is valid, and reports the remaining
+manual steps in the job summary. Once a release tag exists, GitHub shows a
+**"Publish this Action to the GitHub Marketplace"** card on the `action.yml`
+page.
+
+### Manual publication steps (by a maintainer)
+
+1. Ensure the repository is **public**.
+2. Push a release tag so `@v1` exists: `git tag v1.0.0 && git push origin v1.0.0`
+   (or publish a release via the UI).
+3. Open [`action.yml`](action.yml) on GitHub → **Draft a release**.
+4. Tick **Publish this Action to the GitHub Marketplace**, accept the GitHub
+   Marketplace Developer Agreement, pick the categories and save.
+
+The Marketplace page is driven by the root `action.yml` metadata (`name`,
+`description`, `author`, `branding`) and this README.
 
 ## Why it exists
 
@@ -137,20 +202,29 @@ requires `push: true` and the appropriate permissions.
 
 ## Reusable actions
 
-Reusable composite actions live under `actions/` and are also consumed with
-`@v1`:
+Custom actions live under `actions/` and are also consumed with `@v1`. They can
+be distributed through the GitHub Marketplace:
 
-| Action | Purpose |
-| --- | --- |
-| `actions/repository-check` | README / license / secret scan |
-| `actions/government-check` | project type detection + optional dependency audit |
-| `actions/ads-check` | light validation when `@codegouvaor/react-ads` is used |
+| Action | Purpose | Marketplace name |
+| --- | --- | --- |
+| `actions/government-check` | full CodeGouvAOR repository & government validation (documentation, license, structure, secrets, project type) | CodeGouvAOR Government Check |
+| `actions/repository-check` | focused README / license / secret scan | — |
+| `actions/ads-check` | light validation when `@codegouvaor/react-ads` is used | — |
+
+The official, Marketplace-ready action is **`government-check`**:
+
+```yaml
+steps:
+  - uses: codegouvaor/actions/government-check@v1
+```
 
 Example:
 
 ```yaml
-- uses: codegouvaor/actions/actions/ads-check@v1
+- uses: codegouvaor/actions/actions/repository-check@v1
 ```
+
+**Documentation:** [actions/government-check/README.md](actions/government-check/README.md)
 
 ## Inputs
 
@@ -198,6 +272,8 @@ Never depend on `main` in a consuming repository. See
 ## Project layout
 
 ```text
+action.yml                # official Marketplace action (CodeGouvAOR Government Check)
+
 .github/
 └── workflows/
     ├── government.yml   # generic CodeGouvAOR validation
@@ -208,8 +284,8 @@ Never depend on `main` in a consuming repository. See
     └── release.yml      # moves the major tag on release
 
 actions/
-├── repository-check/    # README / license / secret scan
-├── government-check/    # detection + dependency audit
+├── government-check/    # official CodeGouvAOR validation (Marketplace action)
+├── repository-check/    # focused README / license / secret scan
 └── ads-check/           # react-ads integration check
 
 publiccode.yml           # official software metadata (publiccode.yml standard)

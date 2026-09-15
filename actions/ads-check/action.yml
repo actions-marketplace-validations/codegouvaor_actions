@@ -1,8 +1,5 @@
 name: CodeGouvAOR ADS check
-description: >-
-  Light validation for projects that use @codegouvaor/react-ads: presence of the
-  dependency, resolvability after install, and optionally a minimum version and
-  at least one import in the sources.
+description: Light validation for projects that use @codegouvaor/react-ads.
 author: CodeGouvAOR
 
 branding:

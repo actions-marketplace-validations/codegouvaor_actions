@@ -29,7 +29,7 @@ jobs:
       - name: Lint workflows and composite actions
         run: |
           export PATH="$(go env GOPATH)/bin:$PATH"
-          pip install --quiet pyyaml
+          python3 -m pip install --quiet pyyaml
           bash tests/lint.sh
 
   unit:
@@ -43,6 +43,58 @@ jobs:
 
       - name: Run script tests
         run: bash tests/run.sh
+
+  action:
+    name: Integration - government-check action
+    needs: [lint]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run CodeGouvAOR Government Check
+        id: check
+        uses: $/actions/government-check
+        with:
+          readme-required: true
+          license-required: true
+          secret-scan: true
+
+      - name: Verify action outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "status=${{ steps.check.outputs.status }}"
+          echo "project-type=${{ steps.check.outputs.project-type }}"
+          echo "checks-passed=${{ steps.check.outputs.checks-passed }}"
+          test "${{ steps.check.outputs.status }}" = "pass"
+
+  marketplace:
+    name: Marketplace detection
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install PyYAML
+        run: python3 -m pip install --quiet pyyaml
+
+      - name: Detect and validate Marketplace readiness
+        id: detect
+        shell: bash
+        run: bash scripts/marketplace-detect.sh
+
+      - name: Report
+        shell: bash
+        run: |
+          echo "marketplace-detected=${{ steps.detect.outputs.marketplace-detected }}"
+          echo "release=${{ steps.detect.outputs.release }}"
 
   government:
     name: Self-hosted government CI (dogfood)

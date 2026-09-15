@@ -2,6 +2,16 @@ name: CodeGouvAOR Government Check
 description: Validate a repository against official CodeGouvAOR repository and government standards.
 author: CodeGouvAOR
 
+# This root `action.yml` is the official CodeGouvAOR action published to the
+# GitHub Marketplace. GitHub requires a single action metadata file at the
+# repository root to be detected and listed on the Marketplace.
+#
+# The implementation lives in actions/government-check/ so there is a single
+# source of truth; this file only forwards inputs/outputs to it. The `$/`
+# self-repository reference resolves to this repository at the exact commit or
+# tag the caller pinned (e.g. @v1), so the published action always matches the
+# release it is invoked from.
+
 branding:
   icon: shield
   color: blue
@@ -30,7 +40,7 @@ inputs:
     required: false
     default: "false"
   codeowners-required:
-    description: Fail when no .github/CODEOWNERS file is found.
+    description: Fail when no CODEOWNERS file is found.
     required: false
     default: "false"
   publiccode-required:
@@ -77,90 +87,74 @@ inputs:
 outputs:
   status:
     description: "'pass' when all checks passed, 'fail' otherwise."
-    value: ${{ steps.validate.outputs.status }}
+    value: ${{ steps.check.outputs.status }}
   errors:
     description: Number of failed checks.
-    value: ${{ steps.validate.outputs.errors }}
+    value: ${{ steps.check.outputs.errors }}
   warnings:
     description: Number of warnings reported.
-    value: ${{ steps.validate.outputs.warnings }}
+    value: ${{ steps.check.outputs.warnings }}
   checks-passed:
     description: Number of checks that passed.
-    value: ${{ steps.validate.outputs.checks-passed }}
+    value: ${{ steps.check.outputs.checks-passed }}
   has-readme:
     description: "'true' when a README file exists."
-    value: ${{ steps.validate.outputs.has-readme }}
+    value: ${{ steps.check.outputs.has-readme }}
   has-license:
     description: "'true' when a license file exists."
-    value: ${{ steps.validate.outputs.has-license }}
+    value: ${{ steps.check.outputs.has-license }}
   has-gitignore:
     description: "'true' when a .gitignore file exists."
-    value: ${{ steps.validate.outputs.has-gitignore }}
+    value: ${{ steps.check.outputs.has-gitignore }}
   has-codeowners:
     description: "'true' when a CODEOWNERS file exists."
-    value: ${{ steps.validate.outputs.has-codeowners }}
+    value: ${{ steps.check.outputs.has-codeowners }}
   has-publiccode:
     description: "'true' when a publiccode.yml file exists."
-    value: ${{ steps.validate.outputs.has-publiccode }}
+    value: ${{ steps.check.outputs.has-publiccode }}
   secrets-found:
     description: "'true' when the secret scan reported at least one match."
-    value: ${{ steps.validate.outputs.secrets-found }}
+    value: ${{ steps.check.outputs.secrets-found }}
   project-type:
     description: Resolved project type (node, go, docker, mixed or none).
-    value: ${{ steps.detect.outputs.project-type }}
+    value: ${{ steps.check.outputs.project-type }}
   detected-types:
     description: Comma-separated list of detected types (for example "node,docker").
-    value: ${{ steps.detect.outputs.detected-types }}
+    value: ${{ steps.check.outputs.detected-types }}
   is-node:
     description: "'true' when the Node.js validation should run."
-    value: ${{ steps.detect.outputs.is-node }}
+    value: ${{ steps.check.outputs.is-node }}
   is-go:
     description: "'true' when the Go validation should run."
-    value: ${{ steps.detect.outputs.is-go }}
+    value: ${{ steps.check.outputs.is-go }}
   is-docker:
     description: "'true' when the Docker validation should run."
-    value: ${{ steps.detect.outputs.is-docker }}
+    value: ${{ steps.check.outputs.is-docker }}
   package-manager:
     description: Node.js package manager (pnpm, npm or yarn).
-    value: ${{ steps.detect.outputs.package-manager }}
+    value: ${{ steps.check.outputs.package-manager }}
   uses-react-ads:
     description: "'true' when @codegouvaor/react-ads is declared as a dependency."
-    value: ${{ steps.detect.outputs.uses-react-ads }}
+    value: ${{ steps.check.outputs.uses-react-ads }}
 
 runs:
   using: composite
   steps:
-    - id: detect
-      shell: bash
-      env:
-        WORKING_DIRECTORY: ${{ inputs.working-directory }}
-        PROJECT_TYPE: ${{ inputs.project-type }}
-      run: bash "${{ github.action_path }}/scripts/detect.sh"
-
-    - id: validate
-      shell: bash
-      env:
-        WORKING_DIRECTORY: ${{ inputs.working-directory }}
-        README_REQUIRED: ${{ inputs.readme-required }}
-        LICENSE_REQUIRED: ${{ inputs.license-required }}
-        GITIGNORE_REQUIRED: ${{ inputs.gitignore-required }}
-        CODEOWNERS_REQUIRED: ${{ inputs.codeowners-required }}
-        PUBLICCODE_REQUIRED: ${{ inputs.publiccode-required }}
-        DEPENDABOT_REQUIRED: ${{ inputs.dependabot-required }}
-        SECRET_SCAN: ${{ inputs.secret-scan }}
-        FAIL_ON_SECRET: ${{ inputs.fail-on-secret }}
-        FAIL_ON_WARNING: ${{ inputs.fail-on-warning }}
-        MAX_FILE_SIZE_MB: ${{ inputs.max-file-size-mb }}
-        EXCLUDE: ${{ inputs.exclude }}
-      run: bash "${{ github.action_path }}/scripts/government-check.sh"
-
-    - id: audit
-      shell: bash
-      env:
-        WORKING_DIRECTORY: ${{ inputs.working-directory }}
-        DEPENDENCY_AUDIT: ${{ inputs.dependency-audit }}
-        AUDIT_LEVEL: ${{ inputs.audit-level }}
-        IS_NODE: ${{ steps.detect.outputs.is-node }}
-        IS_GO: ${{ steps.detect.outputs.is-go }}
-        PACKAGE_MANAGER: ${{ steps.detect.outputs.package-manager }}
-      run: bash "${{ github.action_path }}/scripts/audit.sh"
+    - id: check
+      uses: $/actions/government-check
+      with:
+        working-directory: ${{ inputs.working-directory }}
+        project-type: ${{ inputs.project-type }}
+        readme-required: ${{ inputs.readme-required }}
+        license-required: ${{ inputs.license-required }}
+        gitignore-required: ${{ inputs.gitignore-required }}
+        codeowners-required: ${{ inputs.codeowners-required }}
+        publiccode-required: ${{ inputs.publiccode-required }}
+        dependabot-required: ${{ inputs.dependabot-required }}
+        secret-scan: ${{ inputs.secret-scan }}
+        fail-on-secret: ${{ inputs.fail-on-secret }}
+        fail-on-warning: ${{ inputs.fail-on-warning }}
+        max-file-size-mb: ${{ inputs.max-file-size-mb }}
+        dependency-audit: ${{ inputs.dependency-audit }}
+        audit-level: ${{ inputs.audit-level }}
+        exclude: ${{ inputs.exclude }}
