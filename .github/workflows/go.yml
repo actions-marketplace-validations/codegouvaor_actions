@@ -1,0 +1,82 @@
+name: Go CI
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: Go version to install. Leave empty to use go-version-file.
+        type: string
+        default: ""
+      go-version-file:
+        description: go.mod to derive the Go version from when go-version is empty.
+        type: string
+        default: "go.mod"
+      working-directory:
+        description: Directory containing the Go module, relative to the repository root.
+        type: string
+        default: "."
+      run-vet:
+        description: Run `go vet ./...`.
+        type: boolean
+        default: true
+      run-tests:
+        description: Run `go test ./...`.
+        type: boolean
+        default: true
+      run-build:
+        description: Run `go build ./...`.
+        type: boolean
+        default: true
+      test-flags:
+        description: Extra flags for `go test` (for example "-race").
+        type: string
+        default: ""
+      build-flags:
+        description: Extra flags for `go build`.
+        type: string
+        default: ""
+      test-path:
+        description: Package pattern to test.
+        type: string
+        default: "./..."
+      vet-path:
+        description: Package pattern to vet.
+        type: string
+        default: "./..."
+      build-path:
+        description: Package pattern to build.
+        type: string
+        default: "./..."
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: Go CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          go-version-file: ${{ inputs.go-version == '' && format('{0}/{1}', inputs.working-directory, inputs.go-version-file) || '' }}
+          cache: ${{ hashFiles(format('{0}/go.sum', inputs.working-directory)) != '' }}
+
+      - name: Vet
+        if: ${{ inputs.run-vet }}
+        run: go vet ${{ inputs.vet-path }}
+
+      - name: Test
+        if: ${{ inputs.run-tests }}
+        run: go test ${{ inputs.test-flags }} ${{ inputs.test-path }}
+
+      - name: Build
+        if: ${{ inputs.run-build }}
+        run: go build ${{ inputs.build-flags }} ${{ inputs.build-path }}

@@ -1,0 +1,70 @@
+name: CodeGouvAOR repository check
+description: >-
+  Verify the baseline structure of a CodeGouvAOR repository (README, license,
+  tracked .env files) and optionally scan tracked files for exposed secrets.
+author: CodeGouvAOR
+
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  working-directory:
+    description: Directory to inspect, relative to the repository root.
+    required: false
+    default: "."
+  readme-required:
+    description: Fail when no README file is found at the root of the working directory.
+    required: false
+    default: "true"
+  license-required:
+    description: Fail when no license file is found at the root of the working directory.
+    required: false
+    default: "true"
+  gitignore-required:
+    description: Fail when no .gitignore file is found at the root of the working directory.
+    required: false
+    default: "false"
+  secret-scan:
+    description: Scan tracked files for well-known secret patterns.
+    required: false
+    default: "true"
+  fail-on-secret:
+    description: Fail the step when the secret scan reports a match.
+    required: false
+    default: "true"
+  exclude:
+    description: >-
+      Newline-separated extra paths (glob patterns accepted by `case`) to exclude
+      from the secret scan.
+    required: false
+    default: ""
+
+outputs:
+  has-readme:
+    description: "'true' when a README file exists."
+    value: ${{ steps.check.outputs.has-readme }}
+  has-license:
+    description: "'true' when a license file exists."
+    value: ${{ steps.check.outputs.has-license }}
+  secrets-found:
+    description: "'true' when the secret scan reported at least one match."
+    value: ${{ steps.check.outputs.secrets-found }}
+  result:
+    description: "'pass' when every required check passed, 'fail' otherwise."
+    value: ${{ steps.check.outputs.result }}
+
+runs:
+  using: composite
+  steps:
+    - id: check
+      shell: bash
+      env:
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        README_REQUIRED: ${{ inputs.readme-required }}
+        LICENSE_REQUIRED: ${{ inputs.license-required }}
+        GITIGNORE_REQUIRED: ${{ inputs.gitignore-required }}
+        SECRET_SCAN: ${{ inputs.secret-scan }}
+        FAIL_ON_SECRET: ${{ inputs.fail-on-secret }}
+        EXCLUDE: ${{ inputs.exclude }}
+      run: bash "${{ github.action_path }}/scripts/repository-check.sh"

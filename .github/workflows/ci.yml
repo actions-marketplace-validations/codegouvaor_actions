@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint workflows and actions
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Install actionlint
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+
+      - name: Lint workflows and composite actions
+        run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          pip install --quiet pyyaml
+          bash tests/lint.sh
+
+  unit:
+    name: Script unit tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run script tests
+        run: bash tests/run.sh
+
+  government:
+    name: Self-hosted government CI (dogfood)
+    needs: [lint]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/government.yml
+    with:
+      project-type: none
+      secret-scan: true
+
+  node:
+    name: Integration - Node.js workflow
+    needs: [lint]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/node.yml
+    with:
+      node-version: "22"
+      package-manager: npm
+      working-directory: tests/fixtures/node-app
+      frozen-lockfile: true
+
+  go:
+    name: Integration - Go workflow
+    needs: [lint]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/go.yml
+    with:
+      go-version: "1.24"
+      working-directory: tests/fixtures/go-app
+
+  docker:
+    name: Integration - Docker workflow
+    needs: [lint]
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/docker.yml
+    with:
+      context: tests/fixtures/docker-app
+      file: tests/fixtures/docker-app/Dockerfile
+      image-name: codegouvaor/actions-fixture
+      push: false

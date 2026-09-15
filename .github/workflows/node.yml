@@ -1,0 +1,174 @@
+name: Node.js / React / Next.js CI
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: Node.js version to install.
+        type: string
+        default: "22"
+      package-manager:
+        description: Package manager to use (pnpm, npm or yarn).
+        type: string
+        default: "pnpm"
+      pnpm-version:
+        description: pnpm version to install when package-manager is pnpm.
+        type: string
+        default: "10"
+      working-directory:
+        description: Directory containing package.json, relative to the repository root.
+        type: string
+        default: "."
+      install-command:
+        description: Override the install command entirely.
+        type: string
+        default: ""
+      lint-command:
+        description: "Override the lint command (default: <pm> run lint)."
+        type: string
+        default: ""
+      typecheck-command:
+        description: "Override the typecheck command (default: <pm> run typecheck)."
+        type: string
+        default: ""
+      test-command:
+        description: "Override the test command (default: <pm> run test)."
+        type: string
+        default: ""
+      build-command:
+        description: "Override the build command (default: <pm> run build)."
+        type: string
+        default: ""
+      run-lint:
+        description: Run lint when a lint script is declared.
+        type: boolean
+        default: true
+      run-typecheck:
+        description: Run typecheck when a typecheck script is declared.
+        type: boolean
+        default: true
+      run-tests:
+        description: Run tests when a test script is declared.
+        type: boolean
+        default: true
+      run-build:
+        description: Run the build when a build script is declared.
+        type: boolean
+        default: true
+      frozen-lockfile:
+        description: Fail install when the lockfile is out of date (pnpm/npm/yarn).
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    name: Node ${{ inputs.node-version }} (${{ inputs.package-manager }})
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare Node CI
+        id: prepare
+        shell: bash
+        env:
+          PM: ${{ inputs.package-manager }}
+          FROZEN: ${{ inputs.frozen-lockfile }}
+          INSTALL_OVERRIDE: ${{ inputs.install-command }}
+        run: |
+          set -euo pipefail
+          case "$PM" in
+            pnpm)
+              install="pnpm install"
+              lockfile="pnpm-lock.yaml"
+              if [ "$FROZEN" = "true" ]; then install="pnpm install --frozen-lockfile"; fi
+              ;;
+            npm)
+              install="npm install"
+              lockfile="package-lock.json"
+              if [ "$FROZEN" = "true" ]; then install="npm ci"; fi
+              ;;
+            yarn)
+              install="yarn install"
+              lockfile="yarn.lock"
+              if [ "$FROZEN" = "true" ]; then install="yarn install --frozen-lockfile"; fi
+              ;;
+            *)
+              echo "Unsupported package-manager: $PM (expected pnpm, npm or yarn)" >&2
+              exit 1
+              ;;
+          esac
+
+          if [ -n "$INSTALL_OVERRIDE" ]; then install="$INSTALL_OVERRIDE"; fi
+          # Detect declared scripts so steps run only when they exist.
+          HAS_LINT=false
+          HAS_TYPECHECK=false
+          HAS_TEST=false
+          HAS_BUILD=false
+          if [ -f package.json ]; then
+            node -e '
+              const fs = require("fs");
+              const scripts = JSON.parse(fs.readFileSync("package.json", "utf8")).scripts || {};
+              const out = process.env.GITHUB_OUTPUT;
+              for (const [name] of Object.entries({
+                lint: "HAS_LINT", typecheck: "HAS_TYPECHECK", test: "HAS_TEST", build: "HAS_BUILD"
+              })) {
+                fs.appendFileSync(out, `${name}=${Boolean(scripts[name])}\n`);
+              }
+            '
+            HAS_LINT="$(grep -q "^lint=true$" "$GITHUB_OUTPUT" && echo true || echo false)"
+            HAS_TYPECHECK="$(grep -q "^typecheck=true$" "$GITHUB_OUTPUT" && echo true || echo false)"
+            HAS_TEST="$(grep -q "^test=true$" "$GITHUB_OUTPUT" && echo true || echo false)"
+            HAS_BUILD="$(grep -q "^build=true$" "$GITHUB_OUTPUT" && echo true || echo false)"
+          fi
+
+          if [ -f "$lockfile" ]; then
+            echo "cache_enabled=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "cache_enabled=false" >>"$GITHUB_OUTPUT"
+          fi
+
+          echo "install=$install" >>"$GITHUB_OUTPUT"
+          echo "lockfile=$lockfile" >>"$GITHUB_OUTPUT"
+          echo "has_lint=$HAS_LINT" >>"$GITHUB_OUTPUT"
+          echo "has_typecheck=$HAS_TYPECHECK" >>"$GITHUB_OUTPUT"
+          echo "has_test=$HAS_TEST" >>"$GITHUB_OUTPUT"
+          echo "has_build=$HAS_BUILD" >>"$GITHUB_OUTPUT"
+
+      - name: Set up pnpm
+        if: ${{ inputs.package-manager == 'pnpm' }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ inputs.pnpm-version }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ steps.prepare.outputs.cache_enabled == 'true' && inputs.package-manager || '' }}
+          cache-dependency-path: ${{ inputs.working-directory }}/${{ steps.prepare.outputs.lockfile }}
+
+      - name: Install dependencies
+        run: ${{ steps.prepare.outputs.install }}
+
+      - name: Lint
+        if: ${{ inputs.run-lint && steps.prepare.outputs.has_lint == 'true' }}
+        run: ${{ inputs.lint-command || format('{0} run lint', inputs.package-manager) }}
+
+      - name: Typecheck
+        if: ${{ inputs.run-typecheck && steps.prepare.outputs.has_typecheck == 'true' }}
+        run: ${{ inputs.typecheck-command || format('{0} run typecheck', inputs.package-manager) }}
+
+      - name: Test
+        if: ${{ inputs.run-tests && steps.prepare.outputs.has_test == 'true' }}
+        run: ${{ inputs.test-command || format('{0} run test', inputs.package-manager) }}
+
+      - name: Build
+        if: ${{ inputs.run-build && steps.prepare.outputs.has_build == 'true' }}
+        run: ${{ inputs.build-command || format('{0} run build', inputs.package-manager) }}

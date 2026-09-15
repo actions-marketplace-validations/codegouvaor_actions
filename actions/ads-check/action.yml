@@ -1,0 +1,65 @@
+name: CodeGouvAOR ADS check
+description: >-
+  Light validation for projects that use @codegouvaor/react-ads: presence of the
+  dependency, resolvability after install, and optionally a minimum version and
+  at least one import in the sources.
+author: CodeGouvAOR
+
+branding:
+  icon: package
+  color: blue
+
+inputs:
+  working-directory:
+    description: Directory to inspect, relative to the repository root.
+    required: false
+    default: "."
+  package-name:
+    description: Package to look for.
+    required: false
+    default: "@codegouvaor/react-ads"
+  minimum-version:
+    description: >-
+      Optional minimum required version (x.y.z). When set, the check fails if the
+      installed or declared version is lower.
+    required: false
+    default: ""
+  require-installed:
+    description: >-
+      Fail when the package is declared but not present in node_modules. Only
+      enable this after dependencies have been installed.
+    required: false
+    default: "false"
+  require-import:
+    description: >-
+      Fail when the package is declared but never imported from the sources.
+      Heuristic; disabled by default.
+    required: false
+    default: "false"
+
+outputs:
+  used:
+    description: "'true' when the package is declared in package.json."
+    value: ${{ steps.check.outputs.used }}
+  version:
+    description: Declared version range, without the leading range operator.
+    value: ${{ steps.check.outputs.version }}
+  installed:
+    description: "'true' when the package is present in node_modules."
+    value: ${{ steps.check.outputs.installed }}
+  result:
+    description: "'pass' when the enabled checks passed, 'fail' otherwise."
+    value: ${{ steps.check.outputs.result }}
+
+runs:
+  using: composite
+  steps:
+    - id: check
+      shell: bash
+      env:
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        PACKAGE_NAME: ${{ inputs.package-name }}
+        MINIMUM_VERSION: ${{ inputs.minimum-version }}
+        REQUIRE_INSTALLED: ${{ inputs.require-installed }}
+        REQUIRE_IMPORT: ${{ inputs.require-import }}
+      run: bash "${{ github.action_path }}/scripts/ads-check.sh"

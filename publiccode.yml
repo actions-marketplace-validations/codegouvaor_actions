@@ -1,0 +1,48 @@
+# This repository adheres to the publiccode.yml standard by including this
+# metadata file that makes public software easily discoverable.
+# More info at https://github.com/publiccodeyml/publiccode.yml
+
+publiccodeYmlVersion: "0"
+name: "codegouvaor-actions"
+url: "https://github.com/codegouvaor/actions"
+releaseDate: "2026-09-15"
+platforms:
+  - web
+developmentStatus: beta
+softwareType: "standalone/other"
+categories:
+  - it-development
+legal:
+  license: MIT
+maintenance:
+  type: community
+  contacts:
+    - name: codegouvaor organization
+      email: codegouvaor@users.noreply.github.com
+      affiliation: Republic of Astoria
+localisation:
+  localisationReady: true
+  availableLanguages:
+    - en
+    - fr
+description:
+  en:
+    shortDescription: Official GitHub Actions for the CodeGouvAOR ecosystem
+    features:
+      - Reusable GitHub Actions workflows (Node.js, Go, Docker)
+      - Generic CodeGouvAOR government CI validation
+      - Reusable composite actions (repository check, project detection, ADS check)
+      - Versioned as a public CI API via the moving v1 tag
+    longDescription: |
+      codegouvaor/actions is the official GitHub Actions support for the
+      CodeGouvAOR ecosystem. It centralises the common CI and controls that the
+      organization's repositories reuse, so projects stay lightweight instead of
+      re-implementing GitHub Actions logic.
+
+      It provides reusable workflows for Node.js/React/Next.js, Go and Docker
+      builds, a generic government CI that detects the project type and applies
+      the relevant validations, and reusable composite actions for repository
+      structure checks, secret scanning and dependency audits.
+
+      It is designed as a public CI API: simple to consume (uses: @v1),
+      documented, versioned and secure by default.

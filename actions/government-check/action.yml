@@ -1,0 +1,75 @@
+name: CodeGouvAOR government check
+description: >-
+  Detect the project type of a CodeGouvAOR repository (Node.js, Go, Docker) from
+  standard files, and optionally audit dependencies for known vulnerabilities.
+author: CodeGouvAOR
+
+branding:
+  icon: check-circle
+  color: blue
+
+inputs:
+  working-directory:
+    description: Directory to inspect, relative to the repository root.
+    required: false
+    default: "."
+  project-type:
+    description: >-
+      Force the detected project type. One of: auto, node, go, docker, none.
+      With "auto" every applicable type is enabled at once.
+    required: false
+    default: "auto"
+  dependency-audit:
+    description: >-
+      Run a dependency vulnerability audit for the detected project type. The
+      required toolchain (pnpm/npm or Go) must already be available on the runner.
+    required: false
+    default: "false"
+  audit-level:
+    description: Minimum severity that fails a Node.js audit (low, moderate, high, critical).
+    required: false
+    default: "high"
+
+outputs:
+  project-type:
+    description: Resolved project type (node, go, docker, mixed or none).
+    value: ${{ steps.detect.outputs.project-type }}
+  detected-types:
+    description: Comma-separated list of detected types (for example "node,docker").
+    value: ${{ steps.detect.outputs.detected-types }}
+  is-node:
+    description: "'true' when the Node.js validation should run."
+    value: ${{ steps.detect.outputs.is-node }}
+  is-go:
+    description: "'true' when the Go validation should run."
+    value: ${{ steps.detect.outputs.is-go }}
+  is-docker:
+    description: "'true' when the Docker validation should run."
+    value: ${{ steps.detect.outputs.is-docker }}
+  package-manager:
+    description: Node.js package manager (pnpm, npm or yarn).
+    value: ${{ steps.detect.outputs.package-manager }}
+  uses-react-ads:
+    description: "'true' when @codegouvaor/react-ads is declared as a dependency."
+    value: ${{ steps.detect.outputs.uses-react-ads }}
+
+runs:
+  using: composite
+  steps:
+    - id: detect
+      shell: bash
+      env:
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        PROJECT_TYPE: ${{ inputs.project-type }}
+      run: bash "${{ github.action_path }}/scripts/detect.sh"
+
+    - id: audit
+      shell: bash
+      env:
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        DEPENDENCY_AUDIT: ${{ inputs.dependency-audit }}
+        AUDIT_LEVEL: ${{ inputs.audit-level }}
+        IS_NODE: ${{ steps.detect.outputs.is-node }}
+        IS_GO: ${{ steps.detect.outputs.is-go }}
+        PACKAGE_MANAGER: ${{ steps.detect.outputs.package-manager }}
+      run: bash "${{ github.action_path }}/scripts/audit.sh"

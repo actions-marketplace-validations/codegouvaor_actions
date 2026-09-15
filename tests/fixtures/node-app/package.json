@@ -1,0 +1,13 @@
+{
+  "name": "node-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Fixture used to validate the node.yml workflow and project detection.",
+  "license": "MIT",
+  "scripts": {
+    "lint": "echo \"lint-ok\"",
+    "typecheck": "echo \"typecheck-ok\"",
+    "test": "node test.js",
+    "build": "echo \"build-ok\""
+  }
+}

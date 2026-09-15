@@ -1,0 +1,87 @@
+name: Release
+
+# Integrated versioning: publishing a release keeps the moving major-version tag
+# (`v1`, `v2`, ...) that is the public contract of this repository in sync.
+#
+# It can be triggered two ways:
+#   - pushing a semantic-version tag (`v1.2.3`), which also opens a GitHub Release;
+#   - publishing a GitHub Release from the UI (`release: published`).
+#
+# In both cases the corresponding major tag is pointed at the released commit, so
+# consumers using `@v1` automatically get the latest compatible release.
+#
+# Policy: see docs/versioning.md
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+
+jobs:
+  release:
+    name: Sync major tag for ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Resolve release version
+        id: version
+        env:
+          FROM_EVENT: ${{ github.event_name == 'release' }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if [ "$FROM_EVENT" = "true" ]; then
+            VERSION="$TAG_NAME"
+          else
+            VERSION="$REF_NAME"
+          fi
+
+          # Expect a clean semantic version such as "v1.2.3".
+          if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Expected a semantic version tag like v1.2.3, got '$VERSION'." >&2
+            exit 1
+          fi
+
+          MAJOR="v${VERSION#v}"          # "v1.2.3" -> "1.2.3"
+          MAJOR="v${MAJOR%%.*}"          # "1.2.3" -> "v1"
+
+          echo "version=$VERSION" >>"$GITHUB_OUTPUT"
+          echo "major=$MAJOR" >>"$GITHUB_OUTPUT"
+          echo "Resolved version=$VERSION, major tag=$MAJOR"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Move the major-version tag
+        env:
+          MAJOR: ${{ steps.version.outputs.major }}
+        run: |
+          set -euo pipefail
+          git tag -f "$MAJOR"
+          git push -f origin "$MAJOR"
+          echo "Moved tag $MAJOR -> ${GITHUB_SHA:0:12}"
+
+      - name: Create GitHub Release
+        if: ${{ github.event_name != 'release' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$VERSION" \
+            --generate-notes \
+            --verify-tag \
+            || echo "Release may already exist for $VERSION."
