@@ -148,7 +148,7 @@ jobs:
           version: ${{ inputs.pnpm-version }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ inputs.node-version }}
           cache: ${{ steps.prepare.outputs.cache_enabled == 'true' && inputs.package-manager || '' }}
