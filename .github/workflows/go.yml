@@ -63,7 +63,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ inputs.go-version }}
           go-version-file: ${{ inputs.go-version == '' && format('{0}/{1}', inputs.working-directory, inputs.go-version-file) || '' }}

@@ -156,7 +156,7 @@ jobs:
 
       - name: Set up Go
         if: ${{ needs.validate.outputs.is-go == 'true' }}
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ inputs.go-version }}
           go-version-file: ${{ inputs.go-version == '' && format('{0}/go.mod', inputs.working-directory) || '' }}
